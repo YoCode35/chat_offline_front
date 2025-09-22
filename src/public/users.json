@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "pseudo": "alice",
+    "password": "1234",
+    "last_connection": "2025-09-20T14:00:00Z"
+  },
+  {
+    "id": 2,
+    "pseudo": "bob",
+    "password": "5678",
+    "last_connection": "2025-09-21T10:30:00Z"
+  }
+]
