@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Routes, Route, Link } from "react-router-dom";
 import WebSocketChat from "./components/WebSocketChat";
-import Register from "./pages/register";
+import Register from "./pages/Register";
 import Login from "./pages/Login";
 
 function Home() {

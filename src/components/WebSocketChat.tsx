@@ -1,5 +1,5 @@
-import { useState } from "react";
-import "../WebSocketChat.css"
+import React, { useState, useEffect } from 'react';
+import './WebSocketChat.css';
 
 // Type pour définir un utilisateur
 interface User {
@@ -40,11 +40,61 @@ const useWebSocket = () => {
   };
 };
 
+// Hook personnalisé pour gérer le swipe
+const useSwipe = (onSwipeLeft: () => void, onSwipeRight: () => void, threshold: number = 50) => {
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > threshold;
+    const isRightSwipe = distance < -threshold;
+
+    if (isLeftSwipe) {
+      onSwipeLeft();
+    } else if (isRightSwipe) {
+      onSwipeRight();
+    }
+  };
+
+  return {
+    onTouchStart,
+    onTouchMove,
+    onTouchEnd
+  };
+};
+
 export default function WebSocketChat() {
   const { messages, sendMessage, isConnected } = useWebSocket();
   const [input, setInput] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("general");
   const [showUsers, setShowUsers] = useState(true);
+  const [showConversations, setShowConversations] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
+
+  // Détecter si on est sur mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const [conversations] = useState<Conversation[]>([
     {
@@ -127,6 +177,24 @@ export default function WebSocketChat() {
     }
   ]);
 
+  // Fonction pour fermer la sidebar et afficher les messages
+  const showChatArea = () => {
+    if (isMobile) {
+      setShowSidebar(false);
+    }
+  };
+
+  // Hook de swipe pour la zone de chat
+  const chatSwipeHandlers = useSwipe(
+    () => {}, // Swipe gauche -> rien
+    () => { // Swipe droite -> ouvrir sidebar
+      if (isMobile) {
+        setShowSidebar(true);
+      }
+    },
+    50 // Seuil plus élevé pour éviter les déclenchements accidentels
+  );
+
   const handleSend = () => {
     if (!isConnected) {
       alert("Connexion WebSocket non établie");
@@ -151,6 +219,17 @@ export default function WebSocketChat() {
 
   const handleConversationChange = (conversationId: string) => {
     setActiveConversationId(conversationId);
+    if (isMobile) {
+      setShowSidebar(false);
+    }
+  };
+
+  const handleUserClick = (userId: string) => {
+    // Logique pour démarrer une conversation privée avec l'utilisateur
+    console.log("Conversation avec:", userId);
+    if (isMobile) {
+      setShowSidebar(false);
+    }
   };
 
   const activeConversation = conversations.find(conv => conv.id === activeConversationId);
@@ -169,25 +248,135 @@ export default function WebSocketChat() {
   const onlineUsers = users.filter(user => user.status === "online").length;
   const totalUsers = users.length;
 
-  return (
-    <div className="home">
-      <div className="websocket-chat">
-        
-        {/* Panel de gauche - Liste des conversations */}
-        <div className="conversations-panel">
-          <div className="conversations-header">
+  // Composant pour les éléments avec swipe
+  const SwipeableItem: React.FC<{
+    children: React.ReactNode;
+    onClick: () => void;
+    className?: string;
+    isActive?: boolean;
+  }> = ({ children, onClick, className = "", isActive = false }) => {
+    const itemSwipeHandlers = useSwipe(
+      () => {
+        onClick();
+        showChatArea();
+      },
+      () => {},
+      30
+    );
+
+    return (
+      <div
+        className={`swipe-item ${className} ${isActive ? 'active' : ''}`}
+        onClick={onClick}
+        {...(isMobile ? itemSwipeHandlers : {})}
+      >
+        {children}
+      </div>
+    );
+  };
+
+  // Sidebar Component
+  const Sidebar = () => (
+    <div className={`sidebar ${isMobile ? 'sidebar-mobile' : 'sidebar-desktop'} ${
+      isMobile ? (showSidebar ? 'sidebar-visible' : 'sidebar-hidden') : ''
+    }`}>
+      
+      {/* Header mobile avec bouton fermer */}
+      {isMobile && (
+        <div className="mobile-header">
+          <h3 className="mobile-header-title">Chat</h3>
+          <div className="mobile-header-actions">
+            <span className="mobile-hint-text">
+              Glissez ← sur les éléments
+            </span>
+            <button
+              onClick={() => setShowSidebar(false)}
+              className="close-button"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Panel des utilisateurs avec accordéon */}
+      <div className={`users-panel ${!showConversations ? 'users-panel-no-conversations' : ''}`}>
+        <div 
+          onClick={() => setShowUsers(!showUsers)}
+          className="panel-header"
+        >
+          <div className="panel-header-title">
+            <span className={`panel-arrow ${showUsers ? 'expanded' : ''}`}>▶</span>
+            👥 Utilisateurs
+          </div>
+          <div className="users-count">
+            {onlineUsers}/{totalUsers} en ligne
+          </div>
+        </div>
+
+        {showUsers && (
+          <div className={`users-list ${isMobile ? '' : 'users-list-desktop'}`}>
+            {users
+              .sort((a, b) => {
+                const statusOrder = { "online": 0, "away": 1, "offline": 2 };
+                return statusOrder[a.status] - statusOrder[b.status];
+              })
+              .map((user) => (
+                <SwipeableItem
+                  key={user.id}
+                  onClick={() => handleUserClick(user.id)}
+                  className="user-item"
+                >
+                  <div className="user-avatar-container">
+                    <div className="user-avatar">
+                      {user.avatar}
+                    </div>
+                    <div className={`user-status-dot status-${user.status}`} />
+                  </div>
+
+                  <div className="user-info">
+                    <div className={`user-name ${user.status}`}>
+                      {user.username}
+                    </div>
+                    <div className={`user-status-text ${user.status}`}>
+                      {getStatusText(user)}
+                    </div>
+                  </div>
+
+                  {user.status === "online" && (
+                    <div className="user-online-indicator" />
+                  )}
+                </SwipeableItem>
+              ))}
+          </div>
+        )}
+      </div>
+
+      {/* Panel des conversations avec accordéon */}
+      <div className="conversations-panel">
+        <div 
+          onClick={() => setShowConversations(!showConversations)}
+          className="panel-header"
+        >
+          <div className="panel-header-title">
+            <span className={`panel-arrow ${showConversations ? 'expanded' : ''}`}>▶</span>
             💬 Conversations
           </div>
+        </div>
 
+        {showConversations && (
           <div className="conversations-list">
             {conversations.map((conversation) => (
-              <div
+              <SwipeableItem
                 key={conversation.id}
                 onClick={() => handleConversationChange(conversation.id)}
-                className={`conversation-item ${conversation.id === activeConversationId ? 'active' : ''}`}
+                className="conversation-item"
+                isActive={conversation.id === activeConversationId}
               >
                 <div className="conversation-content">
-                  <div className={`conversation-name ${conversation.unreadCount && conversation.unreadCount > 0 ? 'unread' : ''}`}>
+                  <div className={`conversation-name ${
+                    conversation.unreadCount && conversation.unreadCount > 0 ? 'unread' : ''
+                  }`}>
                     {conversation.name}
                   </div>
                   {conversation.lastMessage && (
@@ -199,47 +388,79 @@ export default function WebSocketChat() {
                 <div className="conversation-meta">
                   {conversation.lastMessageTime}
                   {conversation.unreadCount && conversation.unreadCount > 0 && (
-                    <div className="unread-badge">
+                    <div className="conversation-unread-badge">
                       {conversation.unreadCount}
                     </div>
                   )}
                 </div>
-              </div>
+              </SwipeableItem>
             ))}
           </div>
-        </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Overlay pour mobile
+  const MobileOverlay = () => (
+    isMobile && showSidebar ? (
+      <div
+        className="mobile-overlay"
+        onClick={() => setShowSidebar(false)}
+      />
+    ) : null
+  );
+
+  return (
+    <div className="websocket-chat-container">
+      <MobileOverlay />
+      
+      <div className="websocket-chat-main">
+        
+        {/* Sidebar - Position absolue sur mobile */}
+        <Sidebar />
 
         {/* Panel central - Chat actuel */}
-        <div className="chat-panel">
+        <div 
+          className={`chat-main ${isMobile ? 'chat-main-mobile chat-area' : ''}`}
+          {...(isMobile ? chatSwipeHandlers : {})}
+        >
           <div className="chat-header">
-            <h3 className="chat-title">
-              {activeConversation?.name || "Chat"}
-            </h3>
-            <div className="chat-controls">
-              <button
-                onClick={() => setShowUsers(!showUsers)}
-                className={`toggle-users-btn ${showUsers ? 'active' : 'inactive'}`}
-              >
-                👥 Utilisateurs
-              </button>
+            <div className="chat-header-left">
+              {/* Bouton hamburger pour mobile */}
+              {isMobile && (
+                <button
+                  onClick={() => setShowSidebar(true)}
+                  className="hamburger-button"
+                >
+                  ☰
+                </button>
+              )}
+              <h3 className="chat-title">
+                {activeConversation?.name || "Chat"}
+              </h3>
+            </div>
+            <div className="chat-header-right">
               <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
                 {isConnected ? "🟢 Connecté" : "🔴 Déconnecté"}
               </div>
             </div>
           </div>
 
-          <div className="messages-area">
+          <div className="messages-container">
             {messages.map((msg, idx) => (
               <div 
                 key={idx} 
-                className={`message-bubble ${idx % 2 === 0 ? 'left' : 'right'}`}
+                className={`message-bubble ${isMobile ? 'message-bubble-mobile' : ''} ${
+                  idx % 2 === 0 ? 'from-other' : 'from-me'
+                }`}
               >
                 {msg}
               </div>
             ))}
           </div>
 
-          <div className="message-input-area">
+          <div className="input-container">
             <input
               className={`message-input ${!isConnected ? 'disconnected' : ''}`}
               value={input}
@@ -251,58 +472,14 @@ export default function WebSocketChat() {
             <button 
               onClick={handleSend}
               disabled={!isConnected || input.trim() === ""}
-              className={`send-button ${isConnected && input.trim() !== "" ? 'active' : 'disabled'}`}
+              className={`send-button ${isMobile ? 'send-button-mobile' : ''} ${
+                isConnected && input.trim() !== "" ? 'enabled' : 'disabled'
+              }`}
             >
-              Envoyer
+              {isMobile ? "📤" : "Envoyer"}
             </button>
           </div>
         </div>
-
-        {/* Panel de droite - Liste des utilisateurs */}
-        {showUsers && (
-          <div className="users-panel">
-            <div className="users-header">
-              <div className="users-title">
-                👥 Utilisateurs
-              </div>
-              <div className="users-count">
-                {onlineUsers}/{totalUsers} en ligne
-              </div>
-            </div>
-
-            <div className="users-list">
-              {users
-                .sort((a, b) => {
-                  // Tri par statut : online > away > offline
-                  const statusOrder = { "online": 0, "away": 1, "offline": 2 };
-                  return statusOrder[a.status] - statusOrder[b.status];
-                })
-                .map((user) => (
-                  <div key={user.id} className="user-item">
-                    <div className="user-avatar-container">
-                      <div className="user-avatar">
-                        {user.avatar}
-                      </div>
-                      <div className={`status-indicator ${user.status}`} />
-                    </div>
-
-                    <div className="user-info">
-                      <div className={`username ${user.status}`}>
-                        {user.username}
-                      </div>
-                      <div className={`user-status-text ${user.status}`}>
-                        {getStatusText(user)}
-                      </div>
-                    </div>
-
-                    {user.status === "online" && (
-                      <div className="pulse-indicator" />
-                    )}
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
