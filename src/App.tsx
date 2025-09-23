@@ -1,16 +1,43 @@
-// On importe le composant WebSocketChat depuis le dossier components
+import { Routes, Route, Link } from "react-router-dom";
 import WebSocketChat from "./components/WebSocketChat";
+import Register from "./pages/register";
+import Login from "./pages/Login";
 
-// Définition du composant App
-function App() {
-  // La fonction retourne du JSX, qui décrit l'UI de ce composant
+
+<><Route path="/register" element={<Register />} />
+
+<Route path="/login" element={<Login />} /></>
+
+function Home() {
   return (
-    <div> {/* Conteneur principal de l'application */}
-      <h1>Chat Off Line</h1> {/* Titre principal de l'application */}
-      <WebSocketChat /> {/* Ici on intègre notre composant de chat */}
+    <div className="home">
+      <h1>Chat Off Line</h1>
     </div>
   );
 }
 
-// On exporte le composant App pour pouvoir l'importer et l'utiliser ailleurs (notamment dans main.tsx)
+function App() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Barre de navigation en haut */}
+      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Link to="/">Accueil</Link>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <Link to="/register">Register</Link>
+          <Link to="/login">Login</Link>
+          <Link to="/chat">Chat</Link>
+        </div>
+      </nav>
+
+      {/* Routes */}
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/chat" element={<WebSocketChat />} />
+      </Routes>
+    </div>
+  );
+}
+
 export default App;

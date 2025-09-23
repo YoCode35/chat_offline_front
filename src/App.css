@@ -3,21 +3,36 @@ body {
   background-color: #f9fafb;
   margin: 0;
   padding: 0;
-
-  /* Centre horizontalement et verticalement tout le contenu */
+  min-height: 100vh;
   display: flex;
+  flex-direction: column;
+}
+
+/* Conteneur global */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Barre de navigation en haut */
+nav {
+  background-color: #fff;
+  padding: 1rem;
+  display: flex;
+  gap: 1rem;
   justify-content: center;
-  align-items: center;
-  height: 100vh;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Style pour le titre */
-h1 {
-  text-align: center;
-  margin-bottom: 1rem; /* un petit espace sous le titre */
+/* Page d'accueil : centrer le titre verticalement */
+.home {
+  flex: 1; /* prend tout l’espace restant */
+  display: flex;
+  justify-content: center;  /* centre horizontalement */
+  align-items: center;      /* centre verticalement */
 }
 
-h2 {
-  text-align: center;
-  margin-bottom: 1rem; /* un petit espace sous le titre */
+.home h1 {
+  margin: 0;
 }
