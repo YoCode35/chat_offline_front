@@ -1,38 +1,217 @@
+/* App.css (ajouts et remplacements) */
+
+/* variables globales */
+:root{
+  --bg: #f9fafb;
+  --card: #ffffff;
+  --accent: #2563eb;
+  --text: #0f172a;
+  --nav-height: 64px;
+}
+
+/* accessibility helper */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0,0,0,0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 body {
   font-family: Arial, sans-serif;
-  background-color: #f9fafb;
+  background-color: var(--bg);
   margin: 0;
   padding: 0;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  color: var(--text);
 }
 
-/* Conteneur global */
-#root {
-  min-height: 100vh;
+/* nav base */
+nav.nav {
+  background-color: var(--card);
+  padding: 0.5rem 1rem;
   display: flex;
-  flex-direction: column;
+  justify-content: center; /* center inner container */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+  position: sticky;
+  top: 0;
+  z-index: 40;
 }
 
-/* Barre de navigation en haut */
-nav {
-  background-color: #fff;
-  padding: 1rem;
+/* inner container to control spacing */
+.nav-inner {
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* logo-link (home icon) */
+.logo-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* make SVGs inherit color */
+.logo-link svg,
+.hamburger svg {
+  display: block;
+  color: var(--accent);
+}
+
+/* nav-links (desktop) */
+.nav-links {
   display: flex;
   gap: 1rem;
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  align-items: center;
 }
 
-/* Page d'accueil : centrer le titre verticalement */
+/* anchor common */
+.nav-links a,
+nav a {
+  text-decoration: none;
+  color: #374151;
+  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  transition: background-color 0.18s, transform 0.12s;
+}
+
+.nav-links a:hover,
+nav a:hover {
+  background-color: #f3f4f6;
+  transform: translateY(-1px);
+}
+
+/* hamburger button */
+.hamburger {
+  background: transparent;
+  border: none;
+  padding: 0.25rem;
+  display: none; /* hidden on desktop */
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color .12s;
+}
+.hamburger:focus {
+  outline: 2px solid rgba(37,99,235,0.25);
+}
+
+/* responsive behaviour */
+
+/* Media queries pour les tablettes */
+@media (max-width: 768px) {
+  .nav-inner {
+    align-items: center;
+  }
+
+  /* show hamburger on smaller screens */
+  .hamburger {
+    display: inline-flex;
+  }
+
+  /* hide default links by default on mobile; they become a vertical menu */
+  .nav-links {
+    position: absolute;
+    top: 64px; /* sous la barre */
+    right: 1rem;
+    background: var(--card);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+    border-radius: 10px;
+    padding: 0.5rem;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: calc(100% - 2rem);
+    max-width: 300px;
+    transform-origin: top right;
+    transform: scale(.98);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+  }
+
+  /* visible state */
+  .nav-links.show {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+  }
+
+  /* on larger mobile / tablet keep nav links inline (if you prefer) */
+  @media (min-width: 560px) {
+    .nav-links {
+      right: 1rem;
+    }
+  }
+}
+
+/* Media queries pour les mobiles */
+@media (max-width: 480px) {
+  nav.nav {
+    padding: 0.5rem;
+  }
+  .nav-links {
+    right: 0.5rem;
+    width: calc(100% - 1rem);
+    max-width: 280px;
+  }
+  .nav-links a {
+    padding: 0.6rem 0.75rem;
+    width: 100%;
+    display: inline-block;
+    text-align: left;
+  }
+  .logo-link svg {
+    width: 26px;
+    height: 26px;
+  }
+}
+
+/* Media queries pour les très petits écrans */
+@media (max-width: 320px) {
+  .nav-links {
+    max-width: 220px;
+    padding: 0.4rem;
+  }
+  .nav-links a {
+    font-size: 0.95rem;
+  }
+}
+
+/* Rest of your existing styles (home etc) */
 .home {
-  flex: 1; /* prend tout l’espace restant */
+  flex: 1;
   display: flex;
-  justify-content: center;  /* centre horizontalement */
-  align-items: center;      /* centre verticalement */
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
 }
 
 .home h1 {
   margin: 0;
+  text-align: center;
+  font-size: 2.5rem;
+  color: #1f2937;
+}
+
+/* maintain reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  nav a {
+    transition: none;
+  }
 }

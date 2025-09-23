@@ -27,17 +27,9 @@ export default function Register() {
   };
 
   const validateForm = () => {
-    // Validation des champs requis
-    if (!formData.nom.trim() || !formData.prenom.trim() || !formData.pseudo.trim() ||
-      !formData.email.trim() || !formData.motdepasse.trim()) {
-      setError('Tous les champs sont obligatoires');
-      return false;
-    }
-
-    // Validation email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError('Format d\'email invalide');
+    // Validation des champs requis (seulement nom et mot de passe)
+    if (!formData.nom.trim() || !formData.motdepasse.trim()) {
+      setError('Le nom et le mot de passe sont obligatoires');
       return false;
     }
 
@@ -47,14 +39,23 @@ export default function Register() {
       return false;
     }
 
-    // Confirmation mot de passe
-    if (formData.motdepasse !== formData.confirmMotdepasse) {
+    // Confirmation mot de passe (seulement si confirmMotdepasse est rempli)
+    if (formData.confirmMotdepasse && formData.motdepasse !== formData.confirmMotdepasse) {
       setError('Les mots de passe ne correspondent pas');
       return false;
     }
 
-    // Validation pseudo (pas d'espaces)
-    if (formData.pseudo.includes(' ')) {
+    // Validation email (seulement si email est rempli)
+    if (formData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        setError('Format d\'email invalide');
+        return false;
+      }
+    }
+
+    // Validation pseudo (seulement si pseudo est rempli)
+    if (formData.pseudo.trim() && formData.pseudo.includes(' ')) {
       setError('Le pseudo ne doit pas contenir d\'espaces');
       return false;
     }
@@ -66,16 +67,17 @@ export default function Register() {
     try {
       // Préparer les données à envoyer (sans la confirmation du mot de passe)
       const dataToSend = {
-        nom: formData.nom,
-        prenom: formData.prenom,
+        username: formData.nom,
+        /*prenom: formData.prenom,
         pseudo: formData.pseudo,
-        email: formData.email,
-        motdepasse: formData.motdepasse
+        email: formData.email,*/
+        password: formData.motdepasse
       };
 
       console.log('Données envoyées:', dataToSend); // Pour débugger
+      console.log('URL complète:', new URL('/auth/register', window.location.origin).href);
 
-      const response = await fetch('/api/register', {
+      const response = await fetch('http://127.0.0.1:3000/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,12 +88,43 @@ export default function Register() {
       console.log('Status de la réponse:', response.status); // Pour débugger
       console.log('Headers de la réponse:', response.headers.get('content-type')); // Pour débugger
 
+      // Récupérer le texte brut de la réponse d'abord
+      const responseText = await response.text();
+      console.log('Réponse brute du serveur:', responseText); // Pour débugger
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de l\'inscription');
+        let errorMessage = 'Erreur lors de l\'inscription';
+        
+        // Essayer de parser le JSON seulement si la réponse n'est pas vide
+        if (responseText.trim()) {
+          try {
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.message || errorMessage;
+          } catch (parseError) {
+            console.warn('Impossible de parser l\'erreur JSON:', parseError);
+            errorMessage = responseText || `Erreur HTTP ${response.status}`;
+          }
+        } else {
+          errorMessage = `Erreur HTTP ${response.status} - Réponse vide`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      // Parser la réponse de succès
+      let data;
+      if (responseText.trim()) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          console.warn('Réponse de succès non-JSON:', responseText);
+          data = { message: 'Inscription réussie', response: responseText };
+        }
+      } else {
+        // Réponse vide mais status OK
+        data = { message: 'Inscription réussie' };
+      }
+
       console.log('Inscription réussie:', data);
 
       // Inscription réussie
@@ -112,7 +145,7 @@ export default function Register() {
       }, 2000);
 
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('Erreur complète:', error);
       setError(error instanceof Error ? error.message : 'Une erreur est survenue lors de l\'inscription');
     }
   };
@@ -201,7 +234,7 @@ export default function Register() {
           <input
             type="text"
             name="nom"
-            placeholder="Nom"
+            placeholder="Nom *"
             value={formData.nom}
             onChange={handleChange}
             required
@@ -218,10 +251,9 @@ export default function Register() {
           <input
             type="text"
             name="prenom"
-            placeholder="Prénom"
+            placeholder="Prénom (optionnel)"
             value={formData.prenom}
             onChange={handleChange}
-            required
             disabled={isLoading}
             style={{
               padding: '0.75rem',
@@ -235,10 +267,9 @@ export default function Register() {
           <input
             type="text"
             name="pseudo"
-            placeholder="Pseudo (sans espaces)"
+            placeholder="Pseudo (optionnel, sans espaces)"
             value={formData.pseudo}
             onChange={handleChange}
-            required
             disabled={isLoading}
             style={{
               padding: '0.75rem',
@@ -252,10 +283,9 @@ export default function Register() {
           <input
             type="email"
             name="email"
-            placeholder="Email"
+            placeholder="Email (optionnel)"
             value={formData.email}
             onChange={handleChange}
-            required
             disabled={isLoading}
             style={{
               padding: '0.75rem',
@@ -270,7 +300,7 @@ export default function Register() {
             <input
               type={showPassword ? "text" : "password"}
               name="motdepasse"
-              placeholder="Mot de passe (min. 6 caractères)"
+              placeholder="Mot de passe * (min. 6 caractères)"
               value={formData.motdepasse}
               onChange={handleChange}
               required
@@ -310,10 +340,9 @@ export default function Register() {
           <input
             type={showPassword ? "text" : "password"}
             name="confirmMotdepasse"
-            placeholder="Confirmer le mot de passe"
+            placeholder="Confirmer le mot de passe (optionnel)"
             value={formData.confirmMotdepasse}
             onChange={handleChange}
-            required
             disabled={isLoading}
             style={{
               padding: '0.75rem',

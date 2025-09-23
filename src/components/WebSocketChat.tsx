@@ -1,8 +1,14 @@
-// On importe useState pour gérer l'état local du champ de saisie
 import { useState } from "react";
+import "../WebSocketChat.css"
 
-// On importe notre hook personnalisé useWebSocket pour gérer la connexion WebSocket
-import { useWebSocket } from "../hooks/useWebSocket";
+// Type pour définir un utilisateur
+interface User {
+  id: string;
+  username: string;
+  status: "online" | "away" | "offline";
+  avatar?: string;
+  lastSeen?: string;
+}
 
 // Type pour définir une conversation
 interface Conversation {
@@ -13,18 +19,33 @@ interface Conversation {
   unreadCount?: number;
 }
 
-// Définition du composant WebSocketChat
+// Mock hook pour simuler useWebSocket
+const useWebSocket = () => {
+  const [messages] = useState([
+    "Salut tout le monde ! 👋",
+    "Comment ça va ?",
+    "Super, et toi ?",
+    "Ça roule ! 🚀",
+    "Qui travaille sur le projet aujourd'hui ?"
+  ]);
+  
+  const sendMessage = (message: string) => {
+    console.log("Envoi du message:", message);
+  };
+  
+  return {
+    messages,
+    sendMessage,
+    isConnected: true
+  };
+};
+
 export default function WebSocketChat() {
-  // On utilise le hook useWebSocket avec l'URL du serveur WebSocket
-  const { messages, sendMessage, isConnected } = useWebSocket("ws://localhost:8080");
-
-  // État local pour stocker le texte tapé par l'utilisateur dans l'input
+  const { messages, sendMessage, isConnected } = useWebSocket();
   const [input, setInput] = useState("");
-
-  // État pour gérer la conversation active
   const [activeConversationId, setActiveConversationId] = useState("general");
+  const [showUsers, setShowUsers] = useState(true);
 
-  // Liste des conversations (vous pourrez la charger depuis une API plus tard)
   const [conversations] = useState<Conversation[]>([
     {
       id: "general",
@@ -63,22 +84,61 @@ export default function WebSocketChat() {
     }
   ]);
 
-  // Fonction appelée quand l'utilisateur clique sur "Envoyer"
+  // Liste des utilisateurs connectés
+  const [users] = useState<User[]>([
+    {
+      id: "1",
+      username: "Alice Martin",
+      status: "online",
+      avatar: "👩‍💻"
+    },
+    {
+      id: "2",
+      username: "Bob Dupont",
+      status: "online",
+      avatar: "👨‍🚀"
+    },
+    {
+      id: "3",
+      username: "Claire Dubois",
+      status: "away",
+      avatar: "👩‍🎨",
+      lastSeen: "il y a 5 min"
+    },
+    {
+      id: "4",
+      username: "David Leroy",
+      status: "online",
+      avatar: "👨‍💼"
+    },
+    {
+      id: "5",
+      username: "Emma Bernard",
+      status: "offline",
+      avatar: "👩‍🔬",
+      lastSeen: "il y a 2h"
+    },
+    {
+      id: "6",
+      username: "François Moreau",
+      status: "away",
+      avatar: "👨‍🎓",
+      lastSeen: "il y a 15 min"
+    }
+  ]);
+
   const handleSend = () => {
-    // On vérifie que la connexion est active avant d'envoyer
     if (!isConnected) {
       alert("Connexion WebSocket non établie");
       return;
     }
     
-    // On ignore les messages vides ou contenant seulement des espaces
     if (input.trim() !== "") {
-      sendMessage(input); // On envoie le message au WebSocket
-      setInput("");       // On vide le champ de saisie
+      sendMessage(input);
+      setInput("");
     }
   };
 
-  // Fonction pour gérer l'appui sur Entrée dans l'input
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       if (!isConnected) {
@@ -89,119 +149,57 @@ export default function WebSocketChat() {
     }
   };
 
-  // Fonction pour changer de conversation
   const handleConversationChange = (conversationId: string) => {
     setActiveConversationId(conversationId);
-    // Ici vous pourriez charger les messages de cette conversation
   };
 
-  // Trouver la conversation active
   const activeConversation = conversations.find(conv => conv.id === activeConversationId);
 
-  // JSX rendu par le composant
+  // Fonction pour obtenir le texte du statut
+  const getStatusText = (user: User) => {
+    switch (user.status) {
+      case "online": return "En ligne";
+      case "away": return user.lastSeen || "Absent";
+      case "offline": return user.lastSeen || "Hors ligne";
+      default: return "Inconnu";
+    }
+  };
+
+  // Compter les utilisateurs par statut
+  const onlineUsers = users.filter(user => user.status === "online").length;
+  const totalUsers = users.length;
+
   return (
     <div className="home">
-      <div style={{ 
-        maxWidth: "1000px", 
-        width: "100%", 
-        height: "80vh",
-        display: "flex",
-        border: "1px solid #ccc",
-        borderRadius: "8px",
-        backgroundColor: "white",
-        boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
-        overflow: "hidden"
-      }}>
+      <div className="websocket-chat">
         
         {/* Panel de gauche - Liste des conversations */}
-        <div style={{
-          width: "300px",
-          borderRight: "1px solid #ccc",
-          display: "flex",
-          flexDirection: "column",
-          backgroundColor: "#f8f9fa"
-        }}>
-          {/* En-tête du panel conversations */}
-          <div style={{
-            padding: "1rem",
-            borderBottom: "1px solid #ccc",
-            backgroundColor: "#fff",
-            fontWeight: "bold",
-            fontSize: "1.1rem"
-          }}>
+        <div className="conversations-panel">
+          <div className="conversations-header">
             💬 Conversations
           </div>
 
-          {/* Liste des conversations */}
-          <div style={{ flex: 1, overflowY: "auto" }}>
+          <div className="conversations-list">
             {conversations.map((conversation) => (
               <div
                 key={conversation.id}
                 onClick={() => handleConversationChange(conversation.id)}
-                style={{
-                  padding: "1rem",
-                  borderBottom: "1px solid #eee",
-                  cursor: "pointer",
-                  backgroundColor: conversation.id === activeConversationId ? "#e3f2fd" : "transparent",
-                  borderLeft: conversation.id === activeConversationId ? "4px solid #2196f3" : "4px solid transparent",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  transition: "all 0.2s ease"
-                }}
-                onMouseEnter={(e) => {
-                  if (conversation.id !== activeConversationId) {
-                    e.currentTarget.style.backgroundColor = "#f5f5f5";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (conversation.id !== activeConversationId) {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }
-                }}
+                className={`conversation-item ${conversation.id === activeConversationId ? 'active' : ''}`}
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ 
-                    fontWeight: conversation.unreadCount && conversation.unreadCount > 0 ? "bold" : "normal",
-                    fontSize: "1rem",
-                    marginBottom: "0.25rem"
-                  }}>
+                <div className="conversation-content">
+                  <div className={`conversation-name ${conversation.unreadCount && conversation.unreadCount > 0 ? 'unread' : ''}`}>
                     {conversation.name}
                   </div>
                   {conversation.lastMessage && (
-                    <div style={{ 
-                      fontSize: "0.85rem", 
-                      color: "#666",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap"
-                    }}>
+                    <div className="conversation-last-message">
                       {conversation.lastMessage}
                     </div>
                   )}
                 </div>
-                <div style={{ 
-                  fontSize: "0.75rem", 
-                  color: "#999",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-end",
-                  gap: "0.25rem"
-                }}>
+                <div className="conversation-meta">
                   {conversation.lastMessageTime}
                   {conversation.unreadCount && conversation.unreadCount > 0 && (
-                    <div style={{
-                      backgroundColor: "#f44336",
-                      color: "white",
-                      borderRadius: "50%",
-                      width: "20px",
-                      height: "20px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "0.7rem",
-                      fontWeight: "bold"
-                    }}>
+                    <div className="unread-badge">
                       {conversation.unreadCount}
                     </div>
                   )}
@@ -211,111 +209,100 @@ export default function WebSocketChat() {
           </div>
         </div>
 
-        {/* Panel de droite - Chat actuel */}
-        <div style={{ 
-          flex: 1,
-          display: "flex", 
-          flexDirection: "column"
-        }}>
-          {/* En-tête du chat avec nom de la conversation et statut de connexion */}
-          <div style={{
-            padding: "1rem",
-            borderBottom: "1px solid #ccc",
-            backgroundColor: "#fff",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center"
-          }}>
-            <h3 style={{ margin: 0, fontSize: "1.2rem" }}>
+        {/* Panel central - Chat actuel */}
+        <div className="chat-panel">
+          <div className="chat-header">
+            <h3 className="chat-title">
               {activeConversation?.name || "Chat"}
             </h3>
-            <div style={{ 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "0.5rem",
-              fontSize: "0.9rem",
-              color: isConnected ? "#4caf50" : "#f44336"
-            }}>
-              {isConnected ? "🟢 Connecté" : "🔴 Déconnecté"}
+            <div className="chat-controls">
+              <button
+                onClick={() => setShowUsers(!showUsers)}
+                className={`toggle-users-btn ${showUsers ? 'active' : 'inactive'}`}
+              >
+                👥 Utilisateurs
+              </button>
+              <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
+                {isConnected ? "🟢 Connecté" : "🔴 Déconnecté"}
+              </div>
             </div>
           </div>
 
-          {/* Conteneur des messages */}
-          <div
-            style={{
-              flex: 1,
-              padding: "1rem",
-              overflowY: "auto",
-              backgroundColor: "#fafafa",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.5rem"
-            }}
-          >
-            {/* On affiche tous les messages reçus */}
+          <div className="messages-area">
             {messages.map((msg, idx) => (
               <div 
                 key={idx} 
-                style={{
-                  padding: "0.5rem 1rem",
-                  borderRadius: "8px",
-                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.1)",
-                  maxWidth: "70%",
-                  alignSelf: idx % 2 === 0 ? "flex-start" : "flex-end", // Alternance pour simulation
-                  backgroundColor: idx % 2 === 0 ? "white" : "#e3f2fd"
-                }}
+                className={`message-bubble ${idx % 2 === 0 ? 'left' : 'right'}`}
               >
                 {msg}
               </div>
             ))}
           </div>
 
-          {/* Zone de saisie avec input et bouton */}
-          <div style={{ 
-            padding: "1rem",
-            borderTop: "1px solid #ccc",
-            backgroundColor: "#fff",
-            display: "flex", 
-            gap: "0.5rem" 
-          }}>
-            {/* Champ de saisie */}
+          <div className="message-input-area">
             <input
-              style={{ 
-                flex: 1,
-                padding: "0.75rem",
-                border: `1px solid ${!isConnected ? "#ffcdd2" : "#ddd"}`,
-                borderRadius: "20px",
-                fontSize: "1rem",
-                outline: "none",
-                backgroundColor: !isConnected ? "#fafafa" : "white",
-                color: !isConnected ? "#999" : "black"
-              }}
+              className={`message-input ${!isConnected ? 'disconnected' : ''}`}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={!isConnected ? "Connexion en cours..." : "Tapez votre message..."}
-              // Suppression du disabled pour permettre le focus
             />
 
-            {/* Bouton pour envoyer le message */}
             <button 
               onClick={handleSend}
               disabled={!isConnected || input.trim() === ""}
-              style={{
-                padding: "0.75rem 1.5rem",
-                backgroundColor: isConnected && input.trim() !== "" ? "#2196f3" : "#ccc",
-                color: "white",
-                border: "none",
-                borderRadius: "20px",
-                fontSize: "1rem",
-                cursor: isConnected && input.trim() !== "" ? "pointer" : "not-allowed",
-                transition: "all 0.2s ease"
-              }}
+              className={`send-button ${isConnected && input.trim() !== "" ? 'active' : 'disabled'}`}
             >
               Envoyer
             </button>
           </div>
         </div>
+
+        {/* Panel de droite - Liste des utilisateurs */}
+        {showUsers && (
+          <div className="users-panel">
+            <div className="users-header">
+              <div className="users-title">
+                👥 Utilisateurs
+              </div>
+              <div className="users-count">
+                {onlineUsers}/{totalUsers} en ligne
+              </div>
+            </div>
+
+            <div className="users-list">
+              {users
+                .sort((a, b) => {
+                  // Tri par statut : online > away > offline
+                  const statusOrder = { "online": 0, "away": 1, "offline": 2 };
+                  return statusOrder[a.status] - statusOrder[b.status];
+                })
+                .map((user) => (
+                  <div key={user.id} className="user-item">
+                    <div className="user-avatar-container">
+                      <div className="user-avatar">
+                        {user.avatar}
+                      </div>
+                      <div className={`status-indicator ${user.status}`} />
+                    </div>
+
+                    <div className="user-info">
+                      <div className={`username ${user.status}`}>
+                        {user.username}
+                      </div>
+                      <div className={`user-status-text ${user.status}`}>
+                        {getStatusText(user)}
+                      </div>
+                    </div>
+
+                    {user.status === "online" && (
+                      <div className="pulse-indicator" />
+                    )}
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
