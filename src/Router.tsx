@@ -10,7 +10,14 @@ const router = createBrowserRouter([
   { path: "/", element: <Home /> },
   { path: "/register", element: <Register /> },
   { path: "/login", element: <Login /> },
-  { path: "/chat", element: <Chat />, loader: chatLoader },
+  {
+    path: "/chat",
+    element: <Chat />,
+    loader: chatLoader,
+    // children: [
+    //   { path: "/:id", element: <Conversation />, loader: conversationLoader },
+    // ],
+  },
 ]);
 
 export default function AppRouter() {
