@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import './WebSocketChat.css';
 
 // Type pour définir un utilisateur
 interface User {
@@ -248,13 +247,104 @@ export default function WebSocketChat() {
   const onlineUsers = users.filter(user => user.status === "online").length;
   const totalUsers = users.length;
 
+  const pulseKeyframes = `
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+      }
+    }
+    @keyframes slideIn {
+      from {
+        transform: translateX(-100%);
+      }
+      to {
+        transform: translateX(0);
+      }
+    }
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(-100%);
+      }
+    }
+    @keyframes swipeHint {
+      0% { transform: translateX(0); }
+      50% { transform: translateX(-10px); }
+      100% { transform: translateX(0); }
+    }
+    @keyframes swipeHintRight {
+      0% { transform: translateX(0); }
+      50% { transform: translateX(10px); }
+      100% { transform: translateX(0); }
+    }
+    .swipe-item {
+      position: relative;
+      overflow: hidden;
+    }
+    .swipe-item::after {
+      content: '← Glissez pour ouvrir le chat';
+      position: absolute;
+      top: 50%;
+      right: -200px;
+      transform: translateY(-50%);
+      background: linear-gradient(135deg, #2196f3, #21cbf3);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      white-space: nowrap;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+    }
+    .swipe-item:active::after {
+      right: 10px;
+      opacity: 1;
+    }
+    .chat-area {
+      position: relative;
+      overflow: hidden;
+    }
+    .chat-area::before {
+      content: 'Glissez → pour ouvrir le menu';
+      position: fixed;
+      top: 50%;
+      left: -250px;
+      transform: translateY(-50%);
+      background: linear-gradient(135deg, #4caf50, #66bb6a);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0 25px 25px 0;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+      z-index: 100;
+    }
+    .chat-area:active::before {
+      left: 0;
+      opacity: 0.9;
+    }
+  `;
+
   // Composant pour les éléments avec swipe
   const SwipeableItem: React.FC<{
     children: React.ReactNode;
     onClick: () => void;
+    style?: React.CSSProperties;
     className?: string;
-    isActive?: boolean;
-  }> = ({ children, onClick, className = "", isActive = false }) => {
+  }> = ({ children, onClick, style, className }) => {
     const itemSwipeHandlers = useSwipe(
       () => {
         onClick();
@@ -264,10 +354,25 @@ export default function WebSocketChat() {
       30
     );
 
+    const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+      if (style?.backgroundColor !== '#e3f2fd') { // Pas pour l'élément actif
+        e.currentTarget.style.backgroundColor = style?.backgroundColor === 'transparent' ? '#f5f5f5' : '#f0f0f0';
+      }
+    };
+
+    const handleMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+      if (style?.backgroundColor !== '#e3f2fd') { // Pas pour l'élément actif
+        e.currentTarget.style.backgroundColor = style?.backgroundColor === '#e3f2fd' ? '#e3f2fd' : 'transparent';
+      }
+    };
+
     return (
       <div
-        className={`swipe-item ${className} ${isActive ? 'active' : ''}`}
+        className={`swipe-item ${className || ''}`}
+        style={style}
         onClick={onClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         {...(isMobile ? itemSwipeHandlers : {})}
       >
         {children}
@@ -277,21 +382,46 @@ export default function WebSocketChat() {
 
   // Sidebar Component
   const Sidebar = () => (
-    <div className={`sidebar ${isMobile ? 'sidebar-mobile' : 'sidebar-desktop'} ${
-      isMobile ? (showSidebar ? 'sidebar-visible' : 'sidebar-hidden') : ''
-    }`}>
+    <div style={{ 
+      width: isMobile ? '100vw' : '380px',
+      height: '100vh',
+      position: isMobile ? 'fixed' : 'relative',
+      top: 0,
+      left: 0,
+      zIndex: isMobile ? 1000 : 'auto',
+      backgroundColor: '#f8f9fa',
+      borderRight: isMobile ? 'none' : '1px solid #ccc',
+      display: 'flex',
+      flexDirection: 'column',
+      transform: isMobile ? (showSidebar ? 'translateX(0)' : 'translateX(-100%)') : 'translateX(0)',
+      transition: 'transform 0.3s ease-in-out'
+    }}>
       
       {/* Header mobile avec bouton fermer */}
       {isMobile && (
-        <div className="mobile-header">
-          <h3 className="mobile-header-title">Chat</h3>
-          <div className="mobile-header-actions">
-            <span className="mobile-hint-text">
+        <div style={{
+          padding: '1rem',
+          backgroundColor: '#2196f3',
+          color: 'white',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 style={{ margin: 0 }}>Chat</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.8rem', opacity: 0.9 }}>
               Glissez ← sur les éléments
             </span>
             <button
               onClick={() => setShowSidebar(false)}
-              className="close-button"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                padding: '0.25rem'
+              }}
             >
               ✕
             </button>
@@ -300,22 +430,42 @@ export default function WebSocketChat() {
       )}
       
       {/* Panel des utilisateurs avec accordéon */}
-      <div className={`users-panel ${!showConversations ? 'users-panel-no-conversations' : ''}`}>
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        backgroundColor: '#f8f9fa',
+        borderBottom: showConversations ? '1px solid #ccc' : 'none'
+      }}>
         <div 
           onClick={() => setShowUsers(!showUsers)}
-          className="panel-header"
+          style={{ 
+            padding: '1rem', 
+            borderBottom: '1px solid #ccc', 
+            backgroundColor: '#fff', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s ease'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
         >
-          <div className="panel-header-title">
-            <span className={`panel-arrow ${showUsers ? 'expanded' : ''}`}>▶</span>
+          <div style={{ fontWeight: 'bold', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ transform: showUsers ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>▶</span>
             👥 Utilisateurs
           </div>
-          <div className="users-count">
+          <div style={{ fontSize: '0.8rem', color: '#666' }}>
             {onlineUsers}/{totalUsers} en ligne
           </div>
         </div>
 
         {showUsers && (
-          <div className={`users-list ${isMobile ? '' : 'users-list-desktop'}`}>
+          <div style={{ 
+            maxHeight: isMobile ? '200px' : '300px', 
+            overflowY: 'auto',
+            transition: 'max-height 0.3s ease'
+          }}>
             {users
               .sort((a, b) => {
                 const statusOrder = { "online": 0, "away": 1, "offline": 2 };
@@ -325,26 +475,61 @@ export default function WebSocketChat() {
                 <SwipeableItem
                   key={user.id}
                   onClick={() => handleUserClick(user.id)}
-                  className="user-item"
+                  style={{ 
+                    padding: '0.75rem 1rem', 
+                    borderBottom: '1px solid #eee', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.75rem', 
+                    cursor: 'pointer', 
+                    transition: 'background-color 0.2s ease',
+                    touchAction: 'pan-x', // Permet le swipe horizontal
+                    backgroundColor: 'transparent'
+                  }}
                 >
-                  <div className="user-avatar-container">
-                    <div className="user-avatar">
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ fontSize: '2rem' }}>
                       {user.avatar}
                     </div>
-                    <div className={`user-status-dot status-${user.status}`} />
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      right: 0,
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      border: '2px solid white',
+                      boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.1)',
+                      backgroundColor: user.status === 'online' ? '#4caf50' : user.status === 'away' ? '#ff9800' : '#9e9e9e'
+                    }} />
                   </div>
 
-                  <div className="user-info">
-                    <div className={`user-name ${user.status}`}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: '0.95rem',
+                      marginBottom: '0.25rem',
+                      fontWeight: user.status === 'online' ? 600 : 'normal',
+                      color: user.status === 'offline' ? '#999' : 'black'
+                    }}>
                       {user.username}
                     </div>
-                    <div className={`user-status-text ${user.status}`}>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      color: user.status === 'online' ? '#4caf50' : user.status === 'away' ? '#ff9800' : '#9e9e9e'
+                    }}>
                       {getStatusText(user)}
                     </div>
                   </div>
 
                   {user.status === "online" && (
-                    <div className="user-online-indicator" />
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: '#4caf50',
+                      animation: 'pulse 2s infinite'
+                    }} />
                   )}
                 </SwipeableItem>
               ))}
@@ -353,42 +538,98 @@ export default function WebSocketChat() {
       </div>
 
       {/* Panel des conversations avec accordéon */}
-      <div className="conversations-panel">
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        backgroundColor: '#f8f9fa' 
+      }}>
         <div 
           onClick={() => setShowConversations(!showConversations)}
-          className="panel-header"
+          style={{ 
+            padding: '1rem', 
+            borderBottom: '1px solid #ccc', 
+            backgroundColor: '#fff', 
+            fontWeight: 'bold', 
+            fontSize: '1.1rem',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
         >
-          <div className="panel-header-title">
-            <span className={`panel-arrow ${showConversations ? 'expanded' : ''}`}>▶</span>
-            💬 Conversations
-          </div>
+          <span style={{ transform: showConversations ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>▶</span>
+          💬 Conversations
         </div>
 
         {showConversations && (
-          <div className="conversations-list">
+          <div style={{ 
+            flex: 1, 
+            overflowY: 'auto',
+            transition: 'opacity 0.3s ease'
+          }}>
             {conversations.map((conversation) => (
               <SwipeableItem
                 key={conversation.id}
                 onClick={() => handleConversationChange(conversation.id)}
-                className="conversation-item"
-                isActive={conversation.id === activeConversationId}
+                style={{
+                  padding: '1rem',
+                  borderBottom: '1px solid #eee',
+                  cursor: 'pointer',
+                  borderLeft: `4px solid ${conversation.id === activeConversationId ? '#2196f3' : 'transparent'}`,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  transition: 'all 0.2s ease',
+                  backgroundColor: conversation.id === activeConversationId ? '#e3f2fd' : 'transparent',
+                  touchAction: 'pan-x' // Permet le swipe horizontal
+                }}
               >
-                <div className="conversation-content">
-                  <div className={`conversation-name ${
-                    conversation.unreadCount && conversation.unreadCount > 0 ? 'unread' : ''
-                  }`}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: '1rem',
+                    marginBottom: '0.25rem',
+                    fontWeight: conversation.unreadCount && conversation.unreadCount > 0 ? 'bold' : 'normal'
+                  }}>
                     {conversation.name}
                   </div>
                   {conversation.lastMessage && (
-                    <div className="conversation-last-message">
+                    <div style={{
+                      fontSize: '0.85rem',
+                      color: '#666',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
                       {conversation.lastMessage}
                     </div>
                   )}
                 </div>
-                <div className="conversation-meta">
+                <div style={{
+                  fontSize: '0.75rem',
+                  color: '#999',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: '0.25rem'
+                }}>
                   {conversation.lastMessageTime}
                   {conversation.unreadCount && conversation.unreadCount > 0 && (
-                    <div className="conversation-unread-badge">
+                    <div style={{
+                      backgroundColor: '#f44336',
+                      color: 'white',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.7rem',
+                      fontWeight: 'bold'
+                    }}>
                       {conversation.unreadCount}
                     </div>
                   )}
@@ -405,64 +646,162 @@ export default function WebSocketChat() {
   const MobileOverlay = () => (
     isMobile && showSidebar ? (
       <div
-        className="mobile-overlay"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 999
+        }}
         onClick={() => setShowSidebar(false)}
       />
     ) : null
   );
 
   return (
-    <div className="websocket-chat-container">
+    <div style={{ margin: 0, padding: 0, width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      <style
+  dangerouslySetInnerHTML={{
+    __html: `
+      ${pulseKeyframes}
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 0; overflow: hidden; }
+
+      /* Messages d'aide affichés uniquement en mobile */
+      ${isMobile ? `
+        .swipe-item::after {
+          content: '← Glissez pour ouvrir le chat';
+        }
+        .chat-area::before {
+          content: 'Glissez → pour ouvrir le menu';
+        }
+      ` : `
+        .swipe-item::after,
+        .chat-area::before {
+          content: none !important;
+        }
+      `}
+    `,
+  }}
+/>
+      
       <MobileOverlay />
       
-      <div className="websocket-chat-main">
+      <div style={{ 
+        width: '100vw', 
+        height: '100vh', 
+        display: 'flex', 
+        backgroundColor: 'white', 
+        overflow: 'hidden',
+        margin: 0,
+        padding: 0,
+        position: 'relative'
+      }}>
         
         {/* Sidebar - Position absolue sur mobile */}
-        <Sidebar />
+        {!isMobile && <Sidebar />}
+        {isMobile && <Sidebar />}
 
         {/* Panel central - Chat actuel */}
         <div 
-          className={`chat-main ${isMobile ? 'chat-main-mobile chat-area' : ''}`}
+          className={isMobile ? "chat-area" : ""}
+          style={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column',
+            width: isMobile ? '100vw' : 'auto',
+            touchAction: isMobile ? 'pan-x pan-y' : 'auto' // Permet swipe horizontal et scroll vertical
+          }}
           {...(isMobile ? chatSwipeHandlers : {})}
         >
-          <div className="chat-header">
-            <div className="chat-header-left">
+          <div style={{
+            padding: '1rem',
+            borderBottom: '1px solid #ccc',
+            backgroundColor: '#fff',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               {/* Bouton hamburger pour mobile */}
               {isMobile && (
                 <button
                   onClick={() => setShowSidebar(true)}
-                  className="hamburger-button"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    padding: '0.25rem'
+                  }}
                 >
                   ☰
                 </button>
               )}
-              <h3 className="chat-title">
+              <h3 style={{ margin: 0, fontSize: '1.2rem' }}>
                 {activeConversation?.name || "Chat"}
               </h3>
             </div>
-            <div className="chat-header-right">
-              <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.9rem',
+                color: isConnected ? '#4caf50' : '#f44336'
+              }}>
                 {isConnected ? "🟢 Connecté" : "🔴 Déconnecté"}
               </div>
             </div>
           </div>
 
-          <div className="messages-container">
+          <div style={{
+            flex: 1,
+            padding: '1rem',
+            overflowY: 'auto',
+            backgroundColor: '#fafafa',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem'
+          }}>
             {messages.map((msg, idx) => (
               <div 
                 key={idx} 
-                className={`message-bubble ${isMobile ? 'message-bubble-mobile' : ''} ${
-                  idx % 2 === 0 ? 'from-other' : 'from-me'
-                }`}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                  maxWidth: isMobile ? '85%' : '70%',
+                  alignSelf: idx % 2 === 0 ? 'flex-start' : 'flex-end',
+                  backgroundColor: idx % 2 === 0 ? 'white' : '#e3f2fd'
+                }}
               >
                 {msg}
               </div>
             ))}
           </div>
 
-          <div className="input-container">
+          <div style={{
+            padding: '1rem',
+            borderTop: '1px solid #ccc',
+            backgroundColor: '#fff',
+            display: 'flex',
+            gap: '0.5rem'
+          }}>
             <input
-              className={`message-input ${!isConnected ? 'disconnected' : ''}`}
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                border: `1px solid ${!isConnected ? '#ffcdd2' : '#ddd'}`,
+                borderRadius: '20px',
+                fontSize: '1rem',
+                outline: 'none',
+                backgroundColor: !isConnected ? '#fafafa' : 'white',
+                color: !isConnected ? '#999' : 'black',
+                transition: 'border-color 0.2s ease'
+              }}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -472,9 +811,16 @@ export default function WebSocketChat() {
             <button 
               onClick={handleSend}
               disabled={!isConnected || input.trim() === ""}
-              className={`send-button ${isMobile ? 'send-button-mobile' : ''} ${
-                isConnected && input.trim() !== "" ? 'enabled' : 'disabled'
-              }`}
+              style={{
+                padding: '0.75rem 1.5rem',
+                color: 'white',
+                border: 'none',
+                borderRadius: '20px',
+                fontSize: isMobile ? '0.9rem' : '1rem',
+                transition: 'all 0.2s ease',
+                backgroundColor: isConnected && input.trim() !== "" ? '#2196f3' : '#ccc',
+                cursor: isConnected && input.trim() !== "" ? 'pointer' : 'not-allowed'
+              }}
             >
               {isMobile ? "📤" : "Envoyer"}
             </button>
