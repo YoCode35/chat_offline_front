@@ -1,27 +1,17 @@
-// On importe des hooks React nécessaires :
-// - useState pour gérer l'état local (messages et connexion)
-// - useRef pour garder une référence au WebSocket
-// - useEffect pour gérer les effets de bord (connexion/déconnexion)
 import { useEffect, useRef, useState } from "react";
 
-// Définition du hook personnalisé `useWebSocket`
-// Il prend en paramètre l'URL du serveur WebSocket
 export function useWebSocket(url: string) {
-  // État pour stocker tous les messages reçus
   const [messages, setMessages] = useState<string[]>([]);
-  
-  // État pour savoir si la connexion WebSocket est active
+
   const [isConnected, setIsConnected] = useState(false);
 
-  // Référence mutable pour stocker l'objet WebSocket
-  // useRef permet de conserver la même instance entre les re-renders
   const wsRef = useRef<WebSocket | null>(null);
 
   // Effet pour gérer la connexion au serveur WebSocket
   useEffect(() => {
     // Création d'une nouvelle connexion WebSocket avec l'URL fournie
     const ws = new WebSocket(url);
-    
+
     // On stocke l'objet WebSocket dans la référence pour y accéder plus tard
     wsRef.current = ws;
 
@@ -34,7 +24,7 @@ export function useWebSocket(url: string) {
     // Quand un message est reçu du serveur
     ws.onmessage = (event) => {
       console.log("📩 Message reçu :", event.data);
-      
+
       // On ajoute le nouveau message à la liste des messages existants
       setMessages((prev) => [...prev, event.data]);
     };
