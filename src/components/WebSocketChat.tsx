@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLoaderData } from 'react-router-dom';
 
 // Type pour définir un utilisateur
 interface User {
@@ -7,6 +8,16 @@ interface User {
   status: "online" | "away" | "offline";
   avatar?: string;
   lastSeen?: string;
+}
+
+// Type pour les données utilisateur reçues de l'API
+interface ApiUser {
+  id?: number | string;
+  username?: string;
+  name?: string;
+  email?: string;
+  last_seen?: string;
+  [key: string]: unknown; // Pour les autres propriétés non spécifiées
 }
 
 // Type pour définir une conversation
@@ -27,11 +38,11 @@ const useWebSocket = () => {
     "Ça roule ! 🚀",
     "Qui travaille sur le projet aujourd'hui ?"
   ]);
-  
+
   const sendMessage = (message: string) => {
     console.log("Envoi du message:", message);
   };
-  
+
   return {
     messages,
     sendMessage,
@@ -55,7 +66,7 @@ const useSwipe = (onSwipeLeft: () => void, onSwipeRight: () => void, threshold: 
 
   const onTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
-    
+
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > threshold;
     const isRightSwipe = distance < -threshold;
@@ -75,6 +86,9 @@ const useSwipe = (onSwipeLeft: () => void, onSwipeRight: () => void, threshold: 
 };
 
 export default function WebSocketChat() {
+  const data = useLoaderData();
+  console.log("Données du loader:", data);
+  
   const { messages, sendMessage, isConnected } = useWebSocket();
   const [input, setInput] = useState("");
   const [activeConversationId, setActiveConversationId] = useState("general");
@@ -82,16 +96,73 @@ export default function WebSocketChat() {
   const [showConversations, setShowConversations] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  
+  // État pour les utilisateurs récupérés de l'API
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
+
+  // Fonction pour récupérer les utilisateurs depuis l'API
+  const fetchUsers = React.useCallback(async () => {
+    try {
+      setUsersLoading(true);
+      setUsersError(null);
+      
+      const response = await fetch('/uncontacted-users');
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+      
+      const userData: ApiUser[] = await response.json();
+      
+      // Transformation des données API vers le format User
+      const formattedUsers: User[] = userData.map((apiUser: ApiUser, index: number) => ({
+        id: apiUser.id?.toString() || index.toString(),
+        username: apiUser.username || apiUser.name || apiUser.email || `Utilisateur ${index + 1}`,
+        status: Math.random() > 0.3 ? "online" : Math.random() > 0.5 ? "away" : "offline" as "online" | "away" | "offline",
+        avatar: getRandomAvatar(),
+        lastSeen: apiUser.last_seen || (Math.random() > 0.5 ? `il y a ${Math.floor(Math.random() * 60) + 1} min` : `il y a ${Math.floor(Math.random() * 24) + 1}h`)
+      }));
+      
+      setUsers(formattedUsers);
+    } catch (error) {
+      console.error('Erreur lors du chargement des utilisateurs:', error);
+      setUsersError(error instanceof Error ? error.message : 'Erreur inconnue');
+      // En cas d'erreur, on garde quelques utilisateurs de fallback
+      setUsers([
+        {
+          id: "fallback-1",
+          username: "Utilisateur de test",
+          status: "online",
+          avatar: "👤"
+        }
+      ]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  // Fonction pour générer un avatar aléatoire
+  const getRandomAvatar = () => {
+    const avatars = ['👩‍💻', '👨‍🚀', '👩‍🎨', '👨‍💼', '👩‍🔬', '👨‍🎓', '👩‍⚕️', '👨‍🏫', '👩‍🎤', '👨‍🎨', '👩‍💼', '👨‍🔧'];
+    return avatars[Math.floor(Math.random() * avatars.length)];
+  };
+
+  // Charger les utilisateurs au montage du composant
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   // Détecter si on est sur mobile
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 768);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    
+
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
@@ -133,49 +204,6 @@ export default function WebSocketChat() {
     }
   ]);
 
-  // Liste des utilisateurs connectés
-  const [users] = useState<User[]>([
-    {
-      id: "1",
-      username: "Alice Martin",
-      status: "online",
-      avatar: "👩‍💻"
-    },
-    {
-      id: "2",
-      username: "Bob Dupont",
-      status: "online",
-      avatar: "👨‍🚀"
-    },
-    {
-      id: "3",
-      username: "Claire Dubois",
-      status: "away",
-      avatar: "👩‍🎨",
-      lastSeen: "il y a 5 min"
-    },
-    {
-      id: "4",
-      username: "David Leroy",
-      status: "online",
-      avatar: "👨‍💼"
-    },
-    {
-      id: "5",
-      username: "Emma Bernard",
-      status: "offline",
-      avatar: "👩‍🔬",
-      lastSeen: "il y a 2h"
-    },
-    {
-      id: "6",
-      username: "François Moreau",
-      status: "away",
-      avatar: "👨‍🎓",
-      lastSeen: "il y a 15 min"
-    }
-  ]);
-
   // Fonction pour fermer la sidebar et afficher les messages
   const showChatArea = () => {
     if (isMobile) {
@@ -185,7 +213,7 @@ export default function WebSocketChat() {
 
   // Hook de swipe pour la zone de chat
   const chatSwipeHandlers = useSwipe(
-    () => {}, // Swipe gauche -> rien
+    () => { }, // Swipe gauche -> rien
     () => { // Swipe droite -> ouvrir sidebar
       if (isMobile) {
         setShowSidebar(true);
@@ -199,7 +227,7 @@ export default function WebSocketChat() {
       alert("Connexion WebSocket non établie");
       return;
     }
-    
+
     if (input.trim() !== "") {
       sendMessage(input);
       setInput("");
@@ -350,7 +378,7 @@ export default function WebSocketChat() {
         onClick();
         showChatArea();
       },
-      () => {},
+      () => { },
       30
     );
 
@@ -382,7 +410,7 @@ export default function WebSocketChat() {
 
   // Sidebar Component
   const Sidebar = () => (
-    <div style={{ 
+    <div style={{
       width: isMobile ? '100vw' : '380px',
       height: '100vh',
       position: isMobile ? 'fixed' : 'relative',
@@ -396,7 +424,7 @@ export default function WebSocketChat() {
       transform: isMobile ? (showSidebar ? 'translateX(0)' : 'translateX(-100%)') : 'translateX(0)',
       transition: 'transform 0.3s ease-in-out'
     }}>
-      
+
       {/* Header mobile avec bouton fermer */}
       {isMobile && (
         <div style={{
@@ -428,22 +456,22 @@ export default function WebSocketChat() {
           </div>
         </div>
       )}
-      
+
       {/* Panel des utilisateurs avec accordéon */}
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
         backgroundColor: '#f8f9fa',
         borderBottom: showConversations ? '1px solid #ccc' : 'none'
       }}>
-        <div 
+        <div
           onClick={() => setShowUsers(!showUsers)}
-          style={{ 
-            padding: '1rem', 
-            borderBottom: '1px solid #ccc', 
-            backgroundColor: '#fff', 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          style={{
+            padding: '1rem',
+            borderBottom: '1px solid #ccc',
+            backgroundColor: '#fff',
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             cursor: 'pointer',
             transition: 'background-color 0.2s ease'
@@ -456,101 +484,129 @@ export default function WebSocketChat() {
             👥 Utilisateurs
           </div>
           <div style={{ fontSize: '0.8rem', color: '#666' }}>
-            {onlineUsers}/{totalUsers} en ligne
+            {usersLoading ? "..." : `${onlineUsers}/${totalUsers} en ligne`}
           </div>
         </div>
 
         {showUsers && (
-          <div style={{ 
-            maxHeight: isMobile ? '200px' : '300px', 
+          <div style={{
+            maxHeight: isMobile ? '200px' : '300px',
             overflowY: 'auto',
             transition: 'max-height 0.3s ease'
           }}>
-            {users
-              .sort((a, b) => {
-                const statusOrder = { "online": 0, "away": 1, "offline": 2 };
-                return statusOrder[a.status] - statusOrder[b.status];
-              })
-              .map((user) => (
-                <SwipeableItem
-                  key={user.id}
-                  onClick={() => handleUserClick(user.id)}
-                  style={{ 
-                    padding: '0.75rem 1rem', 
-                    borderBottom: '1px solid #eee', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.75rem', 
-                    cursor: 'pointer', 
-                    transition: 'background-color 0.2s ease',
-                    touchAction: 'pan-x', // Permet le swipe horizontal
-                    backgroundColor: 'transparent'
+            {usersLoading ? (
+              <div style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>
+                Chargement des utilisateurs...
+              </div>
+            ) : usersError ? (
+              <div style={{ padding: '1rem', color: '#f44336', textAlign: 'center' }}>
+                <div>❌ Erreur: {usersError}</div>
+                <button
+                  onClick={fetchUsers}
+                  style={{
+                    marginTop: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#2196f3',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
                   }}
                 >
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ fontSize: '2rem' }}>
-                      {user.avatar}
+                  Réessayer
+                </button>
+              </div>
+            ) : users.length === 0 ? (
+              <div style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>
+                Aucun utilisateur trouvé
+              </div>
+            ) : (
+              users
+                .sort((a, b) => {
+                  const statusOrder = { "online": 0, "away": 1, "offline": 2 };
+                  return statusOrder[a.status] - statusOrder[b.status];
+                })
+                .map((user) => (
+                  <SwipeableItem
+                    key={user.id}
+                    onClick={() => handleUserClick(user.id)}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderBottom: '1px solid #eee',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s ease',
+                      touchAction: 'pan-x',
+                      backgroundColor: 'transparent'
+                    }}
+                  >
+                    <div style={{ position: 'relative' }}>
+                      <div style={{ fontSize: '2rem' }}>
+                        {user.avatar}
+                      </div>
+                      <div style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        right: 0,
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '50%',
+                        border: '2px solid white',
+                        boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.1)',
+                        backgroundColor: user.status === 'online' ? '#4caf50' : user.status === 'away' ? '#ff9800' : '#9e9e9e'
+                      }} />
                     </div>
-                    <div style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      right: 0,
-                      width: '12px',
-                      height: '12px',
-                      borderRadius: '50%',
-                      border: '2px solid white',
-                      boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.1)',
-                      backgroundColor: user.status === 'online' ? '#4caf50' : user.status === 'away' ? '#ff9800' : '#9e9e9e'
-                    }} />
-                  </div>
 
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: '0.95rem',
-                      marginBottom: '0.25rem',
-                      fontWeight: user.status === 'online' ? 600 : 'normal',
-                      color: user.status === 'offline' ? '#999' : 'black'
-                    }}>
-                      {user.username}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '0.95rem',
+                        marginBottom: '0.25rem',
+                        fontWeight: user.status === 'online' ? 600 : 'normal',
+                        color: user.status === 'offline' ? '#999' : 'black'
+                      }}>
+                        {user.username}
+                      </div>
+                      <div style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        color: user.status === 'online' ? '#4caf50' : user.status === 'away' ? '#ff9800' : '#9e9e9e'
+                      }}>
+                        {getStatusText(user)}
+                      </div>
                     </div>
-                    <div style={{
-                      fontSize: '0.75rem',
-                      fontWeight: 500,
-                      color: user.status === 'online' ? '#4caf50' : user.status === 'away' ? '#ff9800' : '#9e9e9e'
-                    }}>
-                      {getStatusText(user)}
-                    </div>
-                  </div>
 
-                  {user.status === "online" && (
-                    <div style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      backgroundColor: '#4caf50',
-                      animation: 'pulse 2s infinite'
-                    }} />
-                  )}
-                </SwipeableItem>
-              ))}
+                    {user.status === "online" && (
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: '#4caf50',
+                        animation: 'pulse 2s infinite'
+                      }} />
+                    )}
+                  </SwipeableItem>
+                ))
+            )}
           </div>
         )}
       </div>
 
       {/* Panel des conversations avec accordéon */}
-      <div style={{ 
-        flex: 1, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        backgroundColor: '#f8f9fa' 
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#f8f9fa'
       }}>
-        <div 
+        <div
           onClick={() => setShowConversations(!showConversations)}
-          style={{ 
-            padding: '1rem', 
-            borderBottom: '1px solid #ccc', 
-            backgroundColor: '#fff', 
-            fontWeight: 'bold', 
+          style={{
+            padding: '1rem',
+            borderBottom: '1px solid #ccc',
+            backgroundColor: '#fff',
+            fontWeight: 'bold',
             fontSize: '1.1rem',
             cursor: 'pointer',
             transition: 'background-color 0.2s ease',
@@ -566,8 +622,8 @@ export default function WebSocketChat() {
         </div>
 
         {showConversations && (
-          <div style={{ 
-            flex: 1, 
+          <div style={{
+            flex: 1,
             overflowY: 'auto',
             transition: 'opacity 0.3s ease'
           }}>
@@ -585,7 +641,7 @@ export default function WebSocketChat() {
                   alignItems: 'flex-start',
                   transition: 'all 0.2s ease',
                   backgroundColor: conversation.id === activeConversationId ? '#e3f2fd' : 'transparent',
-                  touchAction: 'pan-x' // Permet le swipe horizontal
+                  touchAction: 'pan-x'
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -663,8 +719,8 @@ export default function WebSocketChat() {
   return (
     <div style={{ margin: 0, padding: 0, width: '100vw', height: '100vh', overflow: 'hidden' }}>
       <style
-  dangerouslySetInnerHTML={{
-    __html: `
+        dangerouslySetInnerHTML={{
+          __html: `
       ${pulseKeyframes}
       * { box-sizing: border-box; }
       body { margin: 0; padding: 0; overflow: hidden; }
@@ -684,35 +740,35 @@ export default function WebSocketChat() {
         }
       `}
     `,
-  }}
-/>
-      
+        }}
+      />
+
       <MobileOverlay />
-      
-      <div style={{ 
-        width: '100vw', 
-        height: '100vh', 
-        display: 'flex', 
-        backgroundColor: 'white', 
+
+      <div style={{
+        width: '100vw',
+        height: '100vh',
+        display: 'flex',
+        backgroundColor: 'white',
         overflow: 'hidden',
         margin: 0,
         padding: 0,
         position: 'relative'
       }}>
-        
+
         {/* Sidebar - Position absolue sur mobile */}
         {!isMobile && <Sidebar />}
         {isMobile && <Sidebar />}
 
         {/* Panel central - Chat actuel */}
-        <div 
+        <div
           className={isMobile ? "chat-area" : ""}
-          style={{ 
-            flex: 1, 
-            display: 'flex', 
+          style={{
+            flex: 1,
+            display: 'flex',
             flexDirection: 'column',
             width: isMobile ? '100vw' : 'auto',
-            touchAction: isMobile ? 'pan-x pan-y' : 'auto' // Permet swipe horizontal et scroll vertical
+            touchAction: isMobile ? 'pan-x pan-y' : 'auto'
           }}
           {...(isMobile ? chatSwipeHandlers : {})}
         >
@@ -767,8 +823,8 @@ export default function WebSocketChat() {
             gap: '0.5rem'
           }}>
             {messages.map((msg, idx) => (
-              <div 
-                key={idx} 
+              <div
+                key={idx}
                 style={{
                   padding: '0.5rem 1rem',
                   borderRadius: '8px',
@@ -808,7 +864,7 @@ export default function WebSocketChat() {
               placeholder={!isConnected ? "Connexion en cours..." : "Tapez votre message..."}
             />
 
-            <button 
+            <button
               onClick={handleSend}
               disabled={!isConnected || input.trim() === ""}
               style={{
