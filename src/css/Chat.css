@@ -1,0 +1,110 @@
+.chat-header {
+  width: 100%;
+  background-color: #007bff; /* bleu */
+  padding: 1rem;
+}
+
+.chat-title {
+  margin: 0;
+  text-align: center;
+  color: #ffffff; /* texte en blanc */
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+/* Liste des utilisateurs */
+nav ul {
+  list-style: none;       /* enlève les puces */
+  padding: 0;
+  margin: 1rem 0;
+}
+
+nav li {
+  margin-bottom: 0.5rem;  /* espace entre chaque utilisateur */
+  margin-left: 1rem;      /* petite marge à gauche */
+}
+
+/* Boutons utilisateurs */
+.user-btn {
+  background: none;       /* pas de fond */
+  border: none;           /* pas de bordure */
+  color: #333;
+  font-size: 1.2rem;      /* texte plus gros */
+  cursor: pointer;
+  padding: 0;
+  position: relative;     /* nécessaire pour l’infobulle */
+}
+
+/* Infobulle personnalisée */
+.user-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 100%;             /* à droite du bouton */
+  top: 50%;
+  transform: translateY(-50%);
+  background: #007bff;
+  color: #fff;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+  margin-left: 0.5rem;
+  font-size: 0.9rem;
+  z-index: 10;
+}
+
+/* Affichage au survol */
+.user-btn:hover::after {
+  opacity: 1;
+}
+
+/* Effet au survol sur le texte lui-même */
+.user-btn:hover {
+  color: #007bff;
+  text-decoration: underline;
+}
+
+/* Conteneur utilisateur */
+.user-item {
+  display: flex;
+  align-items: center;
+}
+
+/* Bouton utilisateur */
+.user-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* espace entre texte et cercle */
+  width: 100%; /* pour que l'espace entre texte et cercle soit effectif */
+  background: none;
+  border: none;
+  color: #333;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  position: relative; /* nécessaire pour infobulle */
+}
+
+/* Cercle indiquant le statut */
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 0.5rem; /* espace entre texte et cercle */
+}
+
+/* Couleurs selon le statut */
+.status-indicator.online {
+  background-color: #28a745; /* vert */
+}
+
+.status-indicator.away {
+  background-color: #ffc107; /* jaune */
+}
+
+.status-indicator.offline {
+  background-color: #6c757d; /* gris */
+}

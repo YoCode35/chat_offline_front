@@ -30,5 +30,26 @@ export function http() {
     return res.json() as Promise<T>;
   };
 
-  return { get };
+  const post = async <T>(
+    path: string,
+    body?: Record<string, any>,
+    params?: Record<string, string | number>
+  ): Promise<T> => {
+    const res = await fetch(buildUrl(path, params), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `${localStorage.getItem("token") ?? ""}`,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!res.ok) {
+      throw new Error(`POST ${path} failed: ${res.status} ${res.statusText}`);
+    }
+
+    return res.json() as Promise<T>;
+  };
+
+  return { get, post };
 }
