@@ -5,11 +5,11 @@ import WebSocketChat from "./components/WebSocketChat";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 
-import "./css/app.css";
+import "./css/App.css";
 
 const router = createBrowserRouter([
   {
-    element: <Layout />, 
+    element: <Layout />,
     children: [
       { path: "/", element: <Home /> },
       { path: "/register", element: <Register /> },
