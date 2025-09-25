@@ -273,7 +273,7 @@ export default function Register() {
             <input
               type="text"
               name="pseudo"
-              placeholder="Pseudo (optionnel, sans espaces)"
+              placeholder="Pseudo (optionnel, sans espace)"
               value={formData.pseudo}
               onChange={handleChange}
               disabled={isLoading}
@@ -346,7 +346,7 @@ export default function Register() {
             <input
               type={showPassword ? "text" : "password"}
               name="confirmMotdepasse"
-              placeholder="Confirmer le mot de passe (optionnel)"
+              placeholder="Confirmer le mot de passe *"
               value={formData.confirmMotdepasse}
               onChange={handleChange}
               disabled={isLoading}
