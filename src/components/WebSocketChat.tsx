@@ -11,14 +11,14 @@ interface User {
 }
 
 // Type pour les données utilisateur reçues de l'API
-interface ApiUser {
+/*interface ApiUser {
   id?: number | string;
   username?: string;
   name?: string;
   email?: string;
   last_seen?: string;
   [key: string]: unknown; // Pour les autres propriétés non spécifiées
-}
+}*/
 
 // Type pour définir une conversation
 interface Conversation {
@@ -95,65 +95,28 @@ export default function WebSocketChat() {
   const [showUsers, setShowUsers] = useState(true);
   const [showConversations, setShowConversations] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
   
-  // État pour les utilisateurs récupérés de l'API
-  const [users, setUsers] = useState<User[]>([]);
-  const [usersLoading, setUsersLoading] = useState(true);
-  const [usersError, setUsersError] = useState<string | null>(null);
+  // Utilisateurs en dur - plus besoin de l'API
+  const [users] = useState<User[]>([
+    { id: "1", username: "Alice Martin", status: "online", avatar: "👩‍💻" },
+    { id: "2", username: "Bob Dupont", status: "online", avatar: "👨‍🚀" },
+    { id: "3", username: "Claire Dubois", status: "away", avatar: "👩‍🎨", lastSeen: "il y a 5 min" },
+    { id: "4", username: "David Leroy", status: "online", avatar: "👨‍💼" },
+    { id: "5", username: "Emma Bernard", status: "offline", avatar: "👩‍🔬", lastSeen: "il y a 2h" },
+    { id: "6", username: "François Moreau", status: "away", avatar: "👨‍🎓", lastSeen: "il y a 15 min" },
+    { id: "7", username: "Julie Rousseau", status: "online", avatar: "👩‍⚕️" },
+    { id: "8", username: "Marc Petit", status: "offline", avatar: "👨‍🏫", lastSeen: "il y a 1h" },
+    { id: "9", username: "Sophie Blanc", status: "away", avatar: "👩‍🎤", lastSeen: "il y a 10 min" },
+    { id: "10", username: "Thomas Roux", status: "online", avatar: "👨‍🎨" }
+  ]);
 
-  // Fonction pour récupérer les utilisateurs depuis l'API
-  const fetchUsers = React.useCallback(async () => {
-    try {
-      setUsersLoading(true);
-      setUsersError(null);
-      
-      const response = await fetch('/uncontacted-users');
-      
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-      
-      const userData: ApiUser[] = await response.json();
-      
-      // Transformation des données API vers le format User
-      const formattedUsers: User[] = userData.map((apiUser: ApiUser, index: number) => ({
-        id: apiUser.id?.toString() || index.toString(),
-        username: apiUser.username || apiUser.name || apiUser.email || `Utilisateur ${index + 1}`,
-        status: Math.random() > 0.3 ? "online" : Math.random() > 0.5 ? "away" : "offline" as "online" | "away" | "offline",
-        avatar: getRandomAvatar(),
-        lastSeen: apiUser.last_seen || (Math.random() > 0.5 ? `il y a ${Math.floor(Math.random() * 60) + 1} min` : `il y a ${Math.floor(Math.random() * 24) + 1}h`)
-      }));
-      
-      setUsers(formattedUsers);
-    } catch (error) {
-      console.error('Erreur lors du chargement des utilisateurs:', error);
-      setUsersError(error instanceof Error ? error.message : 'Erreur inconnue');
-      // En cas d'erreur, on garde quelques utilisateurs de fallback
-      setUsers([
-        {
-          id: "fallback-1",
-          username: "Utilisateur de test",
-          status: "online",
-          avatar: "👤"
-        }
-      ]);
-    } finally {
-      setUsersLoading(false);
-    }
-  }, []);
+  // Plus besoin de ces états pour l'API
+  // const [usersLoading, setUsersLoading] = useState(true);
+  // const [usersError, setUsersError] = useState<string | null>(null);
 
-  // Fonction pour générer un avatar aléatoire
-  const getRandomAvatar = () => {
-    const avatars = ['👩‍💻', '👨‍🚀', '👩‍🎨', '👨‍💼', '👩‍🔬', '👨‍🎓', '👩‍⚕️', '👨‍🏫', '👩‍🎤', '👨‍🎨', '👩‍💼', '👨‍🔧'];
-    return avatars[Math.floor(Math.random() * avatars.length)];
-  };
-
-  // Charger les utilisateurs au montage du composant
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-
+  // Suppression de la fonction fetchUsers et de l'appel API
+  
   // Détecter si on est sur mobile
   useEffect(() => {
     const checkMobile = () => {
@@ -436,24 +399,9 @@ export default function WebSocketChat() {
           alignItems: 'center'
         }}>
           <h3 style={{ margin: 0 }}>Chat</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.8rem', opacity: 0.9 }}>
-              Glissez ← sur les éléments
-            </span>
-            <button
-              onClick={() => setShowSidebar(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'white',
-                fontSize: '1.5rem',
-                cursor: 'pointer',
-                padding: '0.25rem'
-              }}
-            >
-              ✕
-            </button>
-          </div>
+          <span style={{ fontSize: '0.8rem', opacity: 0.9 }}>
+            Glissez ← sur les éléments
+          </span>
         </div>
       )}
 
@@ -484,7 +432,7 @@ export default function WebSocketChat() {
             👥 Utilisateurs
           </div>
           <div style={{ fontSize: '0.8rem', color: '#666' }}>
-            {usersLoading ? "..." : `${onlineUsers}/${totalUsers} en ligne`}
+            {`${onlineUsers}/${totalUsers} en ligne`}
           </div>
         </div>
 
@@ -494,101 +442,73 @@ export default function WebSocketChat() {
             overflowY: 'auto',
             transition: 'max-height 0.3s ease'
           }}>
-            {usersLoading ? (
-              <div style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>
-                Chargement des utilisateurs...
-              </div>
-            ) : usersError ? (
-              <div style={{ padding: '1rem', color: '#f44336', textAlign: 'center' }}>
-                <div>❌ Erreur: {usersError}</div>
-                <button
-                  onClick={fetchUsers}
+            {users
+              .sort((a, b) => {
+                const statusOrder = { "online": 0, "away": 1, "offline": 2 };
+                return statusOrder[a.status] - statusOrder[b.status];
+              })
+              .map((user) => (
+                <SwipeableItem
+                  key={user.id}
+                  onClick={() => handleUserClick(user.id)}
                   style={{
-                    marginTop: '0.5rem',
-                    padding: '0.5rem 1rem',
-                    backgroundColor: '#2196f3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
+                    padding: '0.75rem 1rem',
+                    borderBottom: '1px solid #eee',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s ease',
+                    touchAction: 'pan-x',
+                    backgroundColor: 'transparent'
                   }}
                 >
-                  Réessayer
-                </button>
-              </div>
-            ) : users.length === 0 ? (
-              <div style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>
-                Aucun utilisateur trouvé
-              </div>
-            ) : (
-              users
-                .sort((a, b) => {
-                  const statusOrder = { "online": 0, "away": 1, "offline": 2 };
-                  return statusOrder[a.status] - statusOrder[b.status];
-                })
-                .map((user) => (
-                  <SwipeableItem
-                    key={user.id}
-                    onClick={() => handleUserClick(user.id)}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      borderBottom: '1px solid #eee',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s ease',
-                      touchAction: 'pan-x',
-                      backgroundColor: 'transparent'
-                    }}
-                  >
-                    <div style={{ position: 'relative' }}>
-                      <div style={{ fontSize: '2rem' }}>
-                        {user.avatar}
-                      </div>
-                      <div style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        right: 0,
-                        width: '12px',
-                        height: '12px',
-                        borderRadius: '50%',
-                        border: '2px solid white',
-                        boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.1)',
-                        backgroundColor: user.status === 'online' ? '#4caf50' : user.status === 'away' ? '#ff9800' : '#9e9e9e'
-                      }} />
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ fontSize: '2rem' }}>
+                      {user.avatar}
                     </div>
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      right: 0,
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      border: '2px solid white',
+                      boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.1)',
+                      backgroundColor: user.status === 'online' ? '#4caf50' : user.status === 'away' ? '#ff9800' : '#9e9e9e'
+                    }} />
+                  </div>
 
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: '0.95rem',
-                        marginBottom: '0.25rem',
-                        fontWeight: user.status === 'online' ? 600 : 'normal',
-                        color: user.status === 'offline' ? '#999' : 'black'
-                      }}>
-                        {user.username}
-                      </div>
-                      <div style={{
-                        fontSize: '0.75rem',
-                        fontWeight: 500,
-                        color: user.status === 'online' ? '#4caf50' : user.status === 'away' ? '#ff9800' : '#9e9e9e'
-                      }}>
-                        {getStatusText(user)}
-                      </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: '0.95rem',
+                      marginBottom: '0.25rem',
+                      fontWeight: user.status === 'online' ? 600 : 'normal',
+                      color: user.status === 'offline' ? '#999' : 'black'
+                    }}>
+                      {user.username}
                     </div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      color: user.status === 'online' ? '#4caf50' : user.status === 'away' ? '#ff9800' : '#9e9e9e'
+                    }}>
+                      {getStatusText(user)}
+                    </div>
+                  </div>
 
-                    {user.status === "online" && (
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: '#4caf50',
-                        animation: 'pulse 2s infinite'
-                      }} />
-                    )}
-                  </SwipeableItem>
-                ))
-            )}
+                  {user.status === "online" && (
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: '#4caf50',
+                      animation: 'pulse 2s infinite'
+                    }} />
+                  )}
+                </SwipeableItem>
+              ))}
           </div>
         )}
       </div>

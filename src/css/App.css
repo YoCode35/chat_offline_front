@@ -48,7 +48,7 @@ nav.nav {
 /* inner container to control spacing */
 .nav-inner {
   width: 100%;
-  max-width: 1100px;
+  /* max-width: 1100px; */ /* Commentez ou supprimez cette ligne */
   display: flex;
   align-items: center;
   justify-content: space-between;
